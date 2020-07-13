@@ -1,0 +1,34 @@
+version: 0.2
+
+env:
+    secrets-manager:
+        backendIP: wrkshpSecrets:backendIP
+        beURL: wrkshpSecretsPrebuildQA:LoadBalancer
+        
+phases:
+  install:
+    commands:
+     - curl -sL https://deb.nodesource.com/setup_10.x |  bash -
+     - apt install -y nodejs
+  pre_build:
+    commands:
+     - npm install
+  build:
+    commands:
+     - npm run cli
+     - npm run scan
+reports:
+  jest_reports:
+    files:
+      - "junit.xml"
+    file-format: JunitXml
+    base-directory: 'test/results'
+artifacts:
+ files:
+      - "**/*"
+ base-directory: 'test/results'
+ secondary-artifacts:
+    artifact1:
+      files:
+         - "**/*"
+      base-directory: 'build'

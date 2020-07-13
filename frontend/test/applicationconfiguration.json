@@ -1,0 +1,8 @@
+{
+    "site_url":"http://localhost:3000/cts-shop",
+    "jest_timeout":30000,
+    "implicitWait_timeout":10000,
+    "actionScreenshot":true,
+    "uitool":"playwright",
+    "uitoolpossibleoptions":"puppeteer/webdriver/testcafe/playwright"
+}

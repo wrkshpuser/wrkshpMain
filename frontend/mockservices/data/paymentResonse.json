@@ -1,0 +1,15 @@
+{
+
+    "id": "%UNIQUEID%",
+    
+    "additionalProperties": {
+    
+    "result": "Transaction Success",
+    
+    "isTestMode": "true"
+    
+    },
+    
+    "status": "OK"
+    
+    }

@@ -1,0 +1,12 @@
+.sidebar{
+    width: 250px;
+}
+
+.account{
+    text-align: center;
+}
+
+.user{
+    font-size: 72px !important;
+    margin: 10px 0px 0px 0px;
+}

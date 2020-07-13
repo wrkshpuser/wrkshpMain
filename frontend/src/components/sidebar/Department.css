@@ -1,0 +1,7 @@
+.department{
+    width: 90%;
+    max-width: 360;
+    border-right: 2px solid #ff9800;
+    margin: 10px;
+    color: gray !important;
+}

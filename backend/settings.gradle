@@ -1,0 +1,7 @@
+rootProject.name = 'cts-shop'
+include 'customer-service'
+include 'catalogue-service'
+include 'payment-service'
+include 'service-registry'
+include 'image-service'
+

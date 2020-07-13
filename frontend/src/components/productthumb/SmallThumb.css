@@ -1,0 +1,34 @@
+.productthumb {
+    display: flex;
+    padding: 10px;
+    min-height: 255px;
+}
+.smallimg{
+    width: 151px;
+    min-width: 151px;
+    height: 183px;
+    margin-top: 15px;
+}
+.productdetails{
+    display: flex;
+    flex-direction: column;
+}
+.productthumbtitle{
+    flex: 1 0 auto;
+}
+.ratting{
+    margin-left: 12px;
+    margin-bottom: 28px;
+}
+.price {
+    color: #2e86de !important;
+    font-weight: 600 !important;
+}
+.delivery{
+    font-size: 15px !important;
+    color: gray;
+}
+.linkstyle{
+    color: inherit;
+    text-decoration: none;
+}

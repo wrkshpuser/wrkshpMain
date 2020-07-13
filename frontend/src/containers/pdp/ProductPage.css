@@ -1,0 +1,51 @@
+.divider{
+    margin: 20px 0px 10px 0px !important;
+}
+.productpage {
+    display: flex;
+    padding: 10px;
+}
+.productimg{
+    width: 400px;
+    min-width: 400px;
+    height: 510px;
+    margin: 50px;
+}
+.details{
+    display: flex;
+    flex-direction: column;
+    margin: 50px;
+}
+.producttitle{
+    flex: 1 0 auto;
+}
+.productprice {
+    margin: 5px 0px !important;
+    color: #2e86de !important;
+    font-weight: 100 !important;
+}
+.productreviews{
+    color: gray;
+    margin-bottom: 15px !important;
+}
+.productdelivery{
+    font-size: 15px !important;
+    color: gray;
+}
+
+@media only screen and (min-device-width : 320px) and (max-device-width : 480px){
+    .productpage {
+        display: block;
+        padding: 10px;
+    }
+
+    .productimg{
+        margin: 0 auto;
+        width: 80%;
+        min-width: 80%;
+        height: 400px;
+    }
+    .details{
+        margin: 10px;
+    }
+}

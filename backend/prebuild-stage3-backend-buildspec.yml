@@ -1,0 +1,28 @@
+version: 0.2
+
+env:
+    secrets-manager:
+        backendIP: wrkshpSecrets:backendIP
+        
+phases:
+  build:
+    commands:
+       - ./gradlew clean codeCoverageReport sonarqube
+
+reports:
+  SpringBoot_Test_Reports:
+    files:
+      - "*.xml"
+    file-format: JunitXml
+    base-directory: '*/build/test-results/test/'
+
+#artifacts:
+  #files:
+    # - location
+    # - location
+  #name: $(date +%Y-%m-%d)
+  #discard-paths: yes
+  #base-directory: location
+#cache:
+  #paths:
+    # - paths

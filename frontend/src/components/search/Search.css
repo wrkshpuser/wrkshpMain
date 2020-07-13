@@ -1,0 +1,11 @@
+.search{
+    padding: '2px 4px' !important;
+    margin: 10px 5px;
+    text-align: -webkit-center;
+}
+
+.searchroot{
+    width: fit-content;
+    background: lightgrey;
+    padding: 0px 5px;
+}

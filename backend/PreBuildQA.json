@@ -1,0 +1,1140 @@
+{ 
+   "AWSTemplateFormatVersion":"2010-09-09",
+   "Description":"AWS CloudFormation Template to setup Codepipeline for awswrkshp prebuildqualitycheck frontend and backend",
+   "Resources":{
+	  "Cluster": {
+            "Type": "AWS::ECS::Cluster",
+            "Properties": {
+                "ClusterName": "awswrkshpCluster",
+				"ClusterSettings" : [ 
+					{
+					  "Name" : "containerInsights",
+					  "Value" : "enabled"
+					}
+				]
+            }
+        },
+        "TaskDefinition": {
+            "Type": "AWS::ECS::TaskDefinition",
+            "DependsOn": "LogGroup",
+            "Properties": {
+                "Family": "awswrkshpTaskDefinition",
+                "NetworkMode": "awsvpc",
+                "RequiresCompatibilities": [
+                    "FARGATE"
+                ],
+                "Cpu": 256,
+                "Memory": "0.5GB",
+                "ExecutionRoleArn": {"Ref":"ExecutionRole" },
+                "TaskRoleArn": {
+                    "Ref": "TaskRole"
+                },
+                "ContainerDefinitions": [
+                    {
+                        "Name": "awswrkshpfrontendalb",
+                        "Image": "280367259647.dkr.ecr.us-west-2.amazonaws.com/awswrkshp-aut-frontend:latest",
+                        "PortMappings": [
+                            {
+                                "ContainerPort": "3000"
+                            }
+                        ],
+                        "LogConfiguration": {
+                            "LogDriver": "awslogs",
+                            "Options": {
+                                "awslogs-region": {
+                                    "Ref": "AWS::Region"
+                                },
+                                "awslogs-group": {
+                                    "Ref": "LogGroup"
+                                },
+                                "awslogs-stream-prefix": "ecs"
+                            }
+                        }
+                    }
+                ]
+            }
+        },
+		"TaskDefinitionmock": {
+            "Type": "AWS::ECS::TaskDefinition",
+            "DependsOn": "LogGroupmock",
+            "Properties": {
+                "Family": "awsfrntendmock",
+                "NetworkMode": "awsvpc",
+                "RequiresCompatibilities": [
+                    "FARGATE"
+                ],
+                "Cpu": 256,
+                "Memory": "0.5GB",
+                "ExecutionRoleArn": {"Ref":"ExecutionRole" },
+                "TaskRoleArn": {
+                    "Ref": "TaskRole"
+                },
+                "ContainerDefinitions": [
+                    {
+                        "Name": "awswrkshpFrntEndMock",
+						"Command" : [ "npm","run","mock"],
+                        "Image": "280367259647.dkr.ecr.us-west-2.amazonaws.com/awswrkshp-aut-frontend:latest",
+                        "PortMappings": [
+                            {
+                                "ContainerPort": "8081"
+                            }
+                        ],
+                        "LogConfiguration": {
+                            "LogDriver": "awslogs",
+                            "Options": {
+                                "awslogs-region": {
+                                    "Ref": "AWS::Region"
+                                },
+                                "awslogs-group": {
+                                    "Ref": "LogGroup"
+                                },
+                                "awslogs-stream-prefix": "ecs"
+                            }
+                        }
+                    }
+                ]
+            }
+        },
+        "ExecutionRole": {
+            "Type": "AWS::IAM::Role",
+            "Properties": {
+                "RoleName": "ExecutionRoleMock",
+                "AssumeRolePolicyDocument": {
+                    "Statement": [
+                        {
+                            "Effect": "Allow",
+                            "Principal": {
+                                "Service": "ecs-tasks.amazonaws.com"
+                            },
+                            "Action": "sts:AssumeRole"
+                        }
+                    ]
+                },
+                "ManagedPolicyArns": [
+                    "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
+                ]
+            }
+        },
+        "TaskRole": {
+            "Type": "AWS::IAM::Role",
+            "Properties": {
+                "RoleName": "EcsTaskRole",
+                "AssumeRolePolicyDocument": {
+                    "Statement": [
+                        {
+                            "Effect": "Allow",
+                            "Principal": {
+                                "Service": "ecs-tasks.amazonaws.com"
+                            },
+                            "Action": "sts:AssumeRole"
+                        }
+                    ]
+                }
+            }
+        },
+        "ContainerSecurityGroup": {
+            "Type": "AWS::EC2::SecurityGroup",
+            "Properties": {
+                "GroupDescription": {
+                    "Fn::Join": [
+                        "",
+                        [
+                            "awswrkshpfrontendalb",
+                            "ContainerSecurityGroup"
+                        ]
+                    ]
+                },
+                "VpcId": {"Fn::ImportValue": "wrkshpVPC"},
+                "SecurityGroupIngress": [
+                    {
+                        "IpProtocol": "tcp",
+                        "FromPort": "3000",
+                        "ToPort": "3000",
+                        "SourceSecurityGroupId": {
+                            "Ref": "LoadBalancerSecurityGroup"
+                        }
+                    }
+                ]
+            }
+        },
+		"ContainerSecurityGroupmock": {
+            "Type": "AWS::EC2::SecurityGroup",
+            "Properties": {
+                "GroupDescription": {
+                    "Fn::Join": [
+                        "",
+                        [
+                            "awswrkshpFrntEndMock",
+                            "ContainerSecurityGroup"
+                        ]
+                    ]
+                },
+                "VpcId": {"Fn::ImportValue": "wrkshpVPC"},
+                "SecurityGroupIngress": [
+                    {
+                        "IpProtocol": "tcp",
+                        "FromPort": "8081",
+                        "ToPort": "8081",
+                        "SourceSecurityGroupId": {
+                            "Ref": "LoadBalancerSecurityGroupmock"
+                        }
+                    }
+                ]
+            }
+        },
+        "LoadBalancerSecurityGroup": {
+            "Type": "AWS::EC2::SecurityGroup",
+            "Properties": {
+                "GroupDescription": {
+                    "Fn::Join": [
+                        "",
+                        [
+                            "awswrkshpfrontendalb",
+                            "LoadBalancerSecurityGroup"
+                        ]
+                    ]
+                },
+                "VpcId": {"Fn::ImportValue": "wrkshpVPC"},
+                "SecurityGroupIngress": [
+                    {
+                        "IpProtocol": "tcp",
+                        "FromPort": "8080",
+                        "ToPort": "8080",
+                        "CidrIp": "0.0.0.0/0"
+                    }
+                ]
+            }
+        },
+		"LoadBalancerSecurityGroupmock": {
+            "Type": "AWS::EC2::SecurityGroup",
+            "Properties": {
+                "GroupDescription": {
+                    "Fn::Join": [
+                        "",
+                        [
+                            "awswrkshpFrntEndMock",
+                            "LoadBalancerSecurityGroupmock"
+                        ]
+                    ]
+                },
+                "VpcId": {"Fn::ImportValue": "wrkshpVPC"},
+                "SecurityGroupIngress": [
+                    {
+                        "IpProtocol": "tcp",
+                        "FromPort": "8080",
+                        "ToPort": "8080",
+                        "CidrIp": "0.0.0.0/0"
+                    }
+                ]
+            }
+        },
+        "Service": {
+            "Type": "AWS::ECS::Service",
+            "DependsOn": [
+                "ListenerHTTP"
+            ],
+            "Properties": {
+                "ServiceName": "awswrkshpfrontendalb",
+                "Cluster": {
+                    "Ref": "Cluster"
+                },
+                "TaskDefinition": {
+                    "Ref": "TaskDefinition"
+                },
+                "DeploymentConfiguration": {
+                    "MinimumHealthyPercent": 100,
+                    "MaximumPercent": 200
+                },
+                "DesiredCount": 1,
+                "HealthCheckGracePeriodSeconds": 0,
+                "LaunchType": "FARGATE",
+                "NetworkConfiguration": {
+                    "AwsvpcConfiguration": {
+                        "AssignPublicIp": "ENABLED",
+                        "Subnets": [ 
+                            {"Fn::ImportValue": "wrkshpPublicSubnet"},{"Fn::ImportValue": "wrkshpPrivateSubnet"}
+                        ],
+                        "SecurityGroups": [
+                            {
+                                "Ref": "ContainerSecurityGroup"
+                            }
+                        ]
+                    }
+                },
+                "LoadBalancers": [
+                    {
+                        "ContainerName": "awswrkshpfrontendalb",
+                        "ContainerPort": "3000",
+                        "TargetGroupArn": {
+                            "Ref": "TargetGroup"
+                        }
+                    }
+                ]
+            }
+        },
+		"Servicemock": {
+            "Type": "AWS::ECS::Service",
+            "DependsOn": [
+                "ListenerHTTPmock"
+            ],
+            "Properties": {
+                "ServiceName": "awswrkshpFrntEndMock",
+                "Cluster": {
+                    "Ref": "Cluster"
+                },
+                "TaskDefinition": {
+                    "Ref": "TaskDefinitionmock"
+                },
+                "DeploymentConfiguration": {
+                    "MinimumHealthyPercent": 100,
+                    "MaximumPercent": 200
+                },
+                "DesiredCount": 1,
+                "HealthCheckGracePeriodSeconds": 0,
+                "LaunchType": "FARGATE",
+                "NetworkConfiguration": {
+                    "AwsvpcConfiguration": {
+                        "AssignPublicIp": "ENABLED",
+                        "Subnets": [
+                            {"Fn::ImportValue": "wrkshpPublicSubnet"},{"Fn::ImportValue": "wrkshpPrivateSubnet"}
+                        ],
+                        "SecurityGroups": [
+                            {
+                                "Ref": "ContainerSecurityGroupmock"
+                            }
+                        ]
+                    }
+                },
+                "LoadBalancers": [
+                    {
+                        "ContainerName": "awswrkshpFrntEndMock",
+                        "ContainerPort": "8081",
+                        "TargetGroupArn": {
+                            "Ref": "TargetGroupmock"
+                        }
+                    }
+                ]
+            }
+        },
+        "TargetGroup": {
+            "Type": "AWS::ElasticLoadBalancingV2::TargetGroup",
+            "Properties": {
+                "HealthCheckIntervalSeconds": 60,
+                "HealthCheckPath": "/",
+                "HealthCheckTimeoutSeconds": 30,
+                "UnhealthyThresholdCount": 2,
+                "HealthyThresholdCount": 5,
+                "Name": {
+                    "Fn::Join": [
+                        "",
+                        [
+                            "awswrkshpfrontendalb",
+                            "TargetGroup"
+                        ]
+                    ]
+                },
+                "Port": "3000",
+                "Protocol": "HTTP",
+                "TargetGroupAttributes": [
+                    {
+                        "Key": "deregistration_delay.timeout_seconds",
+                        "Value": 60
+                    }
+                ],
+                "TargetType": "ip",
+                "VpcId": {"Fn::ImportValue": "wrkshpVPC"}
+            }
+        },
+		"TargetGroupmock": {
+            "Type": "AWS::ElasticLoadBalancingV2::TargetGroup",
+            "Properties": {
+                "HealthCheckIntervalSeconds": 10,
+                "HealthCheckPath": "/api/catalogue-rest/product/all",
+                "HealthCheckTimeoutSeconds": 5,
+                "UnhealthyThresholdCount": 2,
+                "HealthyThresholdCount": 2,
+                "Name": {
+                    "Fn::Join": [
+                        "",
+                        [
+                            "awswrkshpFrntEndMock",
+                            "TargetGroup"
+                        ]
+                    ]
+                },
+                "Port": "8081",
+                "Protocol": "HTTP",
+                "TargetGroupAttributes": [
+                    {
+                        "Key": "deregistration_delay.timeout_seconds",
+                        "Value": 60
+                    }
+                ],
+                "TargetType": "ip",
+                "VpcId": {"Fn::ImportValue": "wrkshpVPC"}
+            }
+        },
+        "ListenerHTTP": {
+            "Type": "AWS::ElasticLoadBalancingV2::Listener",
+            "Properties": {
+                "DefaultActions": [
+                    {
+                        "TargetGroupArn": {
+                            "Ref": "TargetGroup"
+                        },
+                        "Type": "forward"
+                    }
+                ],
+                "LoadBalancerArn": {
+                    "Ref": "LoadBalancer"
+                },
+                "Port": "8080",
+                "Protocol": "HTTP"
+            }
+        },
+		"ListenerHTTPmock": {
+            "Type": "AWS::ElasticLoadBalancingV2::Listener",
+            "Properties": {
+                "DefaultActions": [
+					{
+                        "TargetGroupArn": {
+                            "Ref": "TargetGroupmock"
+                        },
+                        "Type": "forward"
+                    }
+                ],
+                "LoadBalancerArn": {
+                    "Ref": "LoadBalancermock"
+                },
+                "Port": "8080",
+                "Protocol": "HTTP"
+            }
+        },
+        "LoadBalancer": {
+            "Type": "AWS::ElasticLoadBalancingV2::LoadBalancer",
+            "Properties": {
+                "LoadBalancerAttributes": [
+                    {
+                        "Key": "idle_timeout.timeout_seconds",
+                        "Value": 60
+                    }
+                ],
+                "Name": {
+                    "Fn::Join": [
+                        "",
+                        [
+                            "awswrkshpfrontendalb",
+                            "LoadBalancer"
+                        ]
+                    ]
+                },
+                "Scheme": "internet-facing",
+                "SecurityGroups": [
+                    {
+                        "Ref": "LoadBalancerSecurityGroup"
+                    }
+                ],
+                "Subnets": [
+                    {"Fn::ImportValue": "wrkshpPublicSubnet"},{"Fn::ImportValue": "wrkshpPrivateSubnet"}
+                ]
+            }
+        },
+		"LoadBalancermock": {
+            "Type": "AWS::ElasticLoadBalancingV2::LoadBalancer",
+            "Properties": {
+                "LoadBalancerAttributes": [
+                    {
+                        "Key": "idle_timeout.timeout_seconds",
+                        "Value": 60
+                    }
+                ],
+                "Name": {
+                    "Fn::Join": [
+                        "",
+                        [
+                            "awswrkshpFrntEndMock",
+                            "LoadBalancer"
+                        ]
+                    ]
+                },
+                "Scheme": "internet-facing",
+                "SecurityGroups": [
+                    {
+                        "Ref": "LoadBalancerSecurityGroupmock"
+                    }
+                ],
+                "Subnets": [ 
+                    {"Fn::ImportValue": "wrkshpPublicSubnet"},{"Fn::ImportValue": "wrkshpPrivateSubnet"}
+                ]
+            }
+        },
+        "LogGroup": {
+            "Type": "AWS::Logs::LogGroup",
+            "Properties": {
+                "LogGroupName": "/ecs/awswrkshpTaskDefinition"
+            }
+        },
+		"LogGroupmock": {
+            "Type": "AWS::Logs::LogGroup",
+            "Properties": {
+                "LogGroupName": "/ecs/awsfrntendmock"
+            }
+        },
+	  "wrkshpcodebuildRole": {
+			"Type": "AWS::IAM::Role",
+			"Properties": {
+				"AssumeRolePolicyDocument": {
+					"Version": "2012-10-17",
+					"Statement": [{
+						"Effect": "Allow",
+						"Principal": {
+							"Service": [
+								"codebuild.amazonaws.com",
+								"codedeploy.amazonaws.com"
+							]
+						},
+						"Action": [
+							"sts:AssumeRole"
+						]
+					}]
+				},
+				"Path": "/",
+				"Policies": [{
+					"PolicyName": "workshopcodebuildpolicy",
+					"PolicyDocument": {
+						"Version": "2012-10-17",
+						"Statement": [{
+							"Effect": "Allow",
+							"Action": "*",
+							"Resource": "*"
+						}]
+					}
+				}]
+			}
+		},
+		"wrkshpcodepipelinerole": {
+            "Type": "AWS::IAM::Role",
+            "Properties": {
+                "AssumeRolePolicyDocument": {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Effect": "Allow",
+                            "Principal": {
+                                "Service": [
+                                    "codepipeline.amazonaws.com"
+                                ]
+                            },
+                            "Action": [
+                                "sts:AssumeRole"
+                            ]
+                        }
+                    ]
+                },
+                "Path": "/",
+                "Policies": [
+                    {
+                        "PolicyName": "codepipelinepolicy",
+                        "PolicyDocument": {
+                            "Version": "2012-10-17",
+                            "Statement": [
+                                {
+                                    "Effect": "Allow",
+                                    "Action": "*",
+                                    "Resource": "*"
+                                }
+                            ]
+                        }
+                    }
+                ]
+            }
+		},
+	  "Cloudwatchfrontendgroup" :{
+		  "Type" : "AWS::Logs::LogGroup",
+		  "Properties" : {
+			  "LogGroupName" : "frontend",
+			  "RetentionInDays" : 365
+			}
+		},
+	  "Cloudwatchsonarteststream" :{
+		"Type" : "AWS::Logs::LogStream",
+		  "Properties" : {
+			  "LogGroupName" : {"Ref":"Cloudwatchfrontendgroup"},
+			  "LogStreamName" : "sonartest"
+			}
+		},
+		"Cloudwatchsonarqubegroup" :{
+		  "Type" : "AWS::Logs::LogGroup",
+		  "Properties" : {
+			  "LogGroupName" : "sonarqube",
+			  "RetentionInDays" : 365
+			}
+		},
+	  "Cloudwatchspringbootstream" :{
+		"Type" : "AWS::Logs::LogStream",
+		  "Properties" : {
+			  "LogGroupName" : {"Ref":"Cloudwatchsonarqubegroup"},
+			  "LogStreamName" : "springboot"
+			}
+		},
+		"Cloudwatchbuildgroup" :{
+		  "Type" : "AWS::Logs::LogGroup",
+		  "Properties" : {
+			  "LogGroupName" : "/aws/frontend/codebuild",
+			  "RetentionInDays" : 365
+			}
+		},
+	  "CloudwatchreactAppstream" :{
+		"Type" : "AWS::Logs::LogStream",
+		  "Properties" : {
+			  "LogGroupName" : {"Ref":"Cloudwatchbuildgroup"},
+			  "LogStreamName" : "reactApp"
+			}
+		},
+	  "SonarQubeReactApp":{ 
+         "Type":"AWS::CodeBuild::Project",
+		 "DependsOn" : "wrkshpcodebuildRole",
+         "Properties":{
+			"Artifacts":
+               {
+				  "Location" : "cfn-devops-workshop-west-2",
+				  "Name" : "/",
+				  "Type" : "S3"
+            },
+			"VpcConfig": {
+				"SecurityGroupIds": [{
+					"Fn::ImportValue": "securitygroup"
+				}],
+				"Subnets": [{
+					"Fn::ImportValue": "wrkshpPrivateSubnet"
+				}],
+				"VpcId": {
+					"Fn::ImportValue": "wrkshpVPC"
+				}
+			},			
+            "Description":"This build is for SonarQubeReactApp created through cfn",
+            "Environment":{ 
+               "ComputeType":"BUILD_GENERAL1_MEDIUM",
+               "Image":"aws/codebuild/standard:4.0",
+			   "PrivilegedMode" : "True",
+               "Type":"LINUX_CONTAINER"
+            },
+			"LogsConfig" : 
+				{
+				  "CloudWatchLogs" : 
+					{
+						"Status" : "ENABLED",
+						"GroupName" : {"Ref":"Cloudwatchfrontendgroup"},
+						"StreamName" : {"Ref":"Cloudwatchsonarteststream"}
+					},
+				  "S3Logs" : 
+					{	
+						"Status" : "DISABLED"
+					}
+				},
+			"Name":"workshop_SonarQubeReactApp",
+			"QueuedTimeoutInMinutes" : 480,
+            "ServiceRole":{"Ref":"wrkshpcodebuildRole"},
+            "Source":{                
+			   "Location": {"Fn::ImportValue": "wrkshpfrontendRepo"},
+               "Type":"CODECOMMIT",
+			   "BuildSpec" : "prebuild-stage2-frontend-buildspec.yml",
+			   "GitCloneDepth" : 1
+            },
+			"SourceVersion" : "refs/heads/codepipeline",
+			"TimeoutInMinutes" : 60
+         }
+      },
+	  "SonarQubeSpringBoot":{ 
+         "Type":"AWS::CodeBuild::Project",
+		 "DependsOn" : "wrkshpcodebuildRole",
+         "Properties":{
+			"Artifacts":
+               {
+				  "Location" : "cfn-devops-workshop-west-2",
+				  "Name" : "/",
+				  "Type" : "S3"
+            },
+			"VpcConfig": {
+				"SecurityGroupIds": [{
+					"Fn::ImportValue": "securitygroup"
+				}],
+				"Subnets": [{
+					"Fn::ImportValue": "wrkshpPrivateSubnet"
+				}],
+				"VpcId": {
+					"Fn::ImportValue": "wrkshpVPC"
+				}
+			},			
+            "Description":"This build is for SonarQube-SpringBoot created through cfn",
+            "Environment":{ 
+               "ComputeType":"BUILD_GENERAL1_MEDIUM",
+               "Image":"aws/codebuild/standard:4.0",
+			   "PrivilegedMode" : "True",
+               "Type":"LINUX_CONTAINER"
+            },
+			"LogsConfig" : 
+				{
+				  "CloudWatchLogs" : 
+					{
+						"Status" : "ENABLED",
+						"GroupName" : {"Ref":"Cloudwatchsonarqubegroup"},
+						"StreamName" : {"Ref":"Cloudwatchspringbootstream"}
+					},
+				  "S3Logs" : 
+					{	
+						"Status" : "DISABLED"
+					}
+				},
+			"Name":"workshop_SonarQubeSpringBoot",
+			"QueuedTimeoutInMinutes" : 480,
+            "ServiceRole":{"Ref":"wrkshpcodebuildRole"},
+            "Source":{ 
+               "Location": {"Fn::ImportValue": "wrkshpbackendRepo"},
+			   "BuildSpec" : "prebuild-stage2-backend-buildspec.yml",
+               "Type":"CODECOMMIT",
+			   "GitCloneDepth" : 1
+            },
+			"SourceVersion" : "refs/heads/master",
+			"TimeoutInMinutes" : 60
+         }
+      },
+	  "UnitTestReactApp":{ 
+         "Type":"AWS::CodeBuild::Project",
+		 "DependsOn" : "wrkshpcodebuildRole",
+         "Properties":{ 
+			"Artifacts":
+               {
+				  "Location" : "cfn-devops-workshop-west-2",
+				  "Name" : "/",
+				  "Type" : "S3"
+            },
+			"VpcConfig": {
+				"SecurityGroupIds": [{
+					"Fn::ImportValue": "securitygroup"
+				}],
+				"Subnets": [{
+					"Fn::ImportValue": "wrkshpPrivateSubnet"
+				}],
+				"VpcId": {
+					"Fn::ImportValue": "wrkshpVPC"
+				}
+			},			
+            "Description":"This build is for UnitTest-ReactApp created through cfn",
+            "Environment":{ 
+               "ComputeType":"BUILD_GENERAL1_MEDIUM",
+               "Image":"aws/codebuild/standard:4.0",
+			   "PrivilegedMode" : "True",
+               "Type":"LINUX_CONTAINER"
+            },
+			"LogsConfig" : 
+				{
+				  "CloudWatchLogs" : 
+					{
+						"Status" : "ENABLED"
+					},
+				  "S3Logs" : 
+					{	
+						"Status" : "DISABLED"
+					}
+				},
+			"Name":"workshop_UnitTestReactApp",
+			"QueuedTimeoutInMinutes" : 480,
+            "ServiceRole":{"Ref":"wrkshpcodebuildRole"},
+            "Source":{ 
+               "Location": {"Fn::ImportValue": "wrkshpfrontendRepo"},
+               "Type":"CODECOMMIT",
+			   "BuildSpec" : "prebuild-stage3-frontend-buildspec.yml",
+			   "GitCloneDepth" : 1
+            },
+			"SourceVersion" : "refs/heads/codepipeline",
+			"TimeoutInMinutes" : 60
+         }
+      },
+	  "SpringBootUnitTest":{ 
+         "Type":"AWS::CodeBuild::Project",
+		 "DependsOn" : "wrkshpcodebuildRole",
+         "Properties":{
+			"Artifacts":
+               {
+				  "Location" : "cfn-devops-workshop-west-2",
+				  "Name" : "/",
+				  "Type" : "S3"
+            },
+			"VpcConfig": {
+				"SecurityGroupIds": [{
+					"Fn::ImportValue": "securitygroup"
+				}],
+				"Subnets": [{
+					"Fn::ImportValue": "wrkshpPrivateSubnet"
+				}],
+				"VpcId": {
+					"Fn::ImportValue": "wrkshpVPC"
+				}
+			},			
+            "Description":"This build is for SpringBootUnitTest created through cfn",
+            "Environment":{ 
+               "ComputeType":"BUILD_GENERAL1_MEDIUM",
+               "Image":"aws/codebuild/standard:4.0",
+			   "PrivilegedMode" : "True",
+               "Type":"LINUX_CONTAINER"
+            },
+			"LogsConfig" : 
+				{
+				  "CloudWatchLogs" : 
+					{
+						"Status" : "ENABLED"
+					},
+				  "S3Logs" : 
+					{	
+						"Status" : "DISABLED"
+					}
+				},
+			"Name":"workshop_SpringBootUnitTest",
+			"QueuedTimeoutInMinutes" : 480,
+            "ServiceRole":{"Ref":"wrkshpcodebuildRole"},
+            "Source":{ 
+               "Location": {"Fn::ImportValue": "wrkshpbackendRepo"},
+               "Type":"CODECOMMIT",
+			   "BuildSpec" : "prebuild-stage3-backend-buildspec.yml",
+			   "GitCloneDepth" : 1
+            },
+			"SourceVersion" : "refs/heads/master",
+			"TimeoutInMinutes" : 60
+         }
+      },
+	  "awswrkshpfrontend":{ 
+         "Type":"AWS::CodeBuild::Project",
+		 "DependsOn" : "wrkshpcodebuildRole",
+         "Properties":{
+			"Artifacts":
+               {
+				  "Location" : "cfn-devops-workshop-west-2",
+				  "Name" : "/",
+				  "Type" : "S3"
+            },
+			"VpcConfig": {
+				"SecurityGroupIds": [{
+					"Fn::ImportValue": "securitygroup"
+				}],
+				"Subnets": [{
+					"Fn::ImportValue": "wrkshpPrivateSubnet"
+				}],
+				"VpcId": {
+					"Fn::ImportValue": "wrkshpVPC"
+				}
+			},			
+            "Description":"This build is for awswrkshpfrontend created through cfn",
+            "Environment":{ 
+               "ComputeType":"BUILD_GENERAL1_MEDIUM",
+               "Image":"aws/codebuild/standard:4.0",
+			   "PrivilegedMode" : "True",
+               "Type":"LINUX_CONTAINER"
+            },
+			"LogsConfig" : 
+				{
+				  "CloudWatchLogs" : 
+					{
+						"Status" : "ENABLED",
+						"GroupName" : {"Ref":"Cloudwatchbuildgroup"},
+						"StreamName" : {"Ref":"CloudwatchreactAppstream"}
+					},
+				  "S3Logs" : 
+					{	
+						"Status" : "DISABLED"
+					}
+				},
+			"Name":"workshop_awswrkshpfrontend",
+			"QueuedTimeoutInMinutes" : 480,
+            "ServiceRole":{"Ref":"wrkshpcodebuildRole"},
+            "Source":{ 
+               "Location": {"Fn::ImportValue": "wrkshpfrontendRepo"},
+               "Type":"CODECOMMIT",
+			    "BuildSpec" : "prebuild-stage4-frontend-buildspec.yml",
+			   "GitCloneDepth" : 1
+            },
+			"SourceVersion" : "refs/heads/codepipeline",
+			"TimeoutInMinutes" : 60
+         }
+      },
+      "CodePipeline":{ 
+		 "DependsOn": [
+                "wrkshpcodepipelinerole","Service","Servicemock"
+            ],
+         "Type" : "AWS::CodePipeline::Pipeline",
+		 "Properties" : {
+			"ArtifactStore" : {
+				  "Location" : "cfn-devops-workshop-west-2",
+				  "Type" : "S3"
+				},
+			"Name" : "workshop_codepipeline_prebuildqualitycheck",
+			"RoleArn" : {"Fn::GetAtt" : ["wrkshpcodepipelinerole", "Arn"] },
+			"Stages" : [
+				{
+				  "Actions" : [
+					{
+					  "OutputArtifacts" : [
+						{
+								 "Name" : "SourceArtifact"
+						}
+						],
+					  "InputArtifacts" : [],
+					  "Namespace" : "SourceVariables",
+					  "Configuration": {
+							"RepositoryName": "awswrkshp-aut-frontend",
+							"BranchName": "master",
+							"PollForSourceChanges": "false"
+						},
+					  "RunOrder": 1,
+					  "ActionTypeId" : 
+							{
+							  "Category" : "Source",
+							  "Owner" : "AWS",
+							  "Provider" : "CodeCommit",
+							  "Version" : "1"
+							},
+					  "Name" : "FrontEndReactApp"
+					},
+					{
+					  "OutputArtifacts" : [
+						{
+								 "Name" : "SpringBootApp"
+						}
+						],
+					  "InputArtifacts" : [],
+					  "Configuration": {
+							"RepositoryName": "awswrkshp-aut-backend",
+							"BranchName": "master",
+							"PollForSourceChanges": "false"
+						},
+					  "RunOrder": 1,
+					  "ActionTypeId" : 
+							{
+							  "Category" : "Source",
+							  "Owner" : "AWS",
+							  "Provider" : "CodeCommit",
+							  "Version" : "1"
+							},
+					  "Name" : "BackEndSpringBootApp"
+					}
+				  ],
+				  "Name" : "Source"
+				},
+				{
+				  "Actions" : [
+					{
+					  "OutputArtifacts" : [],
+					  "InputArtifacts" : [
+					    {
+								 "Name" : "SourceArtifact"
+						}
+					   ],
+					  "Configuration": {
+							"ProjectName": {"Ref": "SonarQubeReactApp"}
+						},
+					  "RunOrder": 1,
+					  "ActionTypeId" : 
+							{
+							  "Category" : "Build",
+							  "Owner" : "AWS",
+							  "Provider" : "CodeBuild",
+							  "Version" : "1"
+							},
+					  "Name" : "ReactAppSonarCheck"
+					},
+					{
+					  "OutputArtifacts" : [],
+					  "InputArtifacts" : [
+					    {
+								 "Name" : "SpringBootApp"
+						}
+					   ],
+					  "Configuration": {
+							"ProjectName": {"Ref": "SonarQubeSpringBoot"}
+						},
+					  "RunOrder": 1,
+					  "ActionTypeId" : 
+							{
+							  "Category" : "Build",
+							  "Owner" : "AWS",
+							  "Provider" : "CodeBuild",
+							  "Version" : "1"
+							},
+					  "Name" : "SpringBootSonarCheck"
+					}
+				  ],
+				  "Name" : "PreBuildQualityCheck"
+				},
+				{
+				  "Actions" : [
+					{
+					  "OutputArtifacts" : [],
+					  "InputArtifacts" : [
+					    {
+								 "Name" : "SourceArtifact"
+						}
+					   ],
+					  "Configuration": {
+							"ProjectName": {"Ref":"UnitTestReactApp"}
+						},
+					  "RunOrder": 1,
+					  "ActionTypeId" : 
+							{
+							  "Category" : "Build",
+							  "Owner" : "AWS",
+							  "Provider" : "CodeBuild",
+							  "Version" : "1"
+							},
+					  "Name" : "ReactAppUnitTest"
+					},
+					{
+					  "OutputArtifacts" : [],
+					  "InputArtifacts" : [
+					    {
+								 "Name" : "SpringBootApp"
+						}
+					   ],
+					  "Configuration": {
+							"ProjectName": {"Ref":"SpringBootUnitTest"}
+						},
+					  "RunOrder": 1,
+					  "ActionTypeId" : 
+							{
+							  "Category" : "Build",
+							  "Owner" : "AWS",
+							  "Provider" : "CodeBuild",
+							  "Version" : "1"
+							},
+					  "Name" : "SpringBootUnitTest"
+					}
+				  ],
+				  "Name" : "UnitTest"
+				},
+				{
+				  "Actions" : [
+					{
+					  "OutputArtifacts" : [
+						{
+						"Name" : "BuildArtifact"
+						}
+					  ],
+					  "InputArtifacts" : [
+					    {
+								 "Name" : "SourceArtifact"
+						}
+					   ],
+					  "Configuration": {
+							"ProjectName": {"Ref":"awswrkshpfrontend"}
+						},
+					  "RunOrder": 1,
+					  "Namespace" : "BuildVariables",
+					  "ActionTypeId" : 
+							{
+							  "Category" : "Build",
+							  "Owner" : "AWS",
+							  "Provider" : "CodeBuild",
+							  "Version" : "1"
+							},
+					  "Name" : "FrontEndBuild"
+					}
+				  ],
+				  "Name" : "Build"
+				},
+				{
+				  "Actions" : [
+					{
+					  "OutputArtifacts" : [],
+					  "InputArtifacts" : [
+					    {
+								 "Name" : "BuildArtifact"
+						}
+					   ],
+					  "Configuration": {
+							"ClusterName": {"Ref":"Cluster"},
+							"ServiceName": "awswrkshpfrontendalb"
+						},
+					  "RunOrder": 1,
+					  "ActionTypeId" : 
+							{
+							  "Category" : "Deploy",
+							  "Owner" : "AWS",
+							  "Provider" : "ECS",
+							  "Version" : "1"
+							},
+					  "Name" : "FargateDeploy"
+					},
+					{
+					  "OutputArtifacts" : [],
+					  "InputArtifacts" : [
+					    {
+								 "Name" : "BuildArtifact"
+						}
+					   ],
+					  "Configuration": {
+							"ClusterName": {"Ref":"Cluster"},
+							"ServiceName": "awswrkshpFrntEndMock"
+						},
+					  "RunOrder": 1,
+					  "ActionTypeId" : 
+							{
+							  "Category" : "Deploy",
+							  "Owner" : "AWS",
+							  "Provider" : "ECS",
+							  "Version" : "1"
+							},
+					  "Name" : "awswrkshpFrntendMockFargateDeploy"
+					}
+				  ],
+				  "Name" : "DeployToFargate"
+				}
+			]
+		}
+      },
+		"wrkshpSecrets": {
+			"Type": "AWS::SecretsManager::Secret",
+			"Properties": {
+			  "Name": "wrkshpSecretsPrebuildQA",		  
+			  "SecretString": {"Fn::Join": ["", [ "{\"LoadBalancer\"",":","\"",{"Fn::GetAtt":["LoadBalancer","DNSName" ]},"\"}"] ]}
+			}
+		}
+	},	  
+   "Outputs":{
+	   "ecsservice":{
+		  "Value":{
+			"Ref":"Service"
+		  }
+		},
+		"ecscluster":{
+		  "Value":{
+			"Ref":"Cluster"
+		  }
+		},
+		"ECSALB":{
+		  "Description":"Your ALB DNS URL",
+		  "Value":{
+			"Fn::Join":[
+			  "",
+			  [
+				{
+				  "Fn::GetAtt":[
+					"LoadBalancer",
+					"DNSName"
+				  ]
+				}
+			  ]
+			]
+		  }
+		},
+		"taskdef":{
+		  "Value":{
+			"Ref":"TaskDefinition"
+		  }
+		},
+		"prebuildqualitycheckPipeline":{
+			"Value":{
+			"Ref":"CodePipeline"
+		  }
+		}
+		
+	}
+}

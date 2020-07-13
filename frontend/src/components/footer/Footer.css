@@ -1,0 +1,21 @@
+.footer{
+    width: 100%;
+    background-color: #ffc107;
+    color: white;
+}
+
+.footeritem{
+    margin-left: 3rem !important;
+    margin-right: 3rem !important;
+    margin-top: 2rem;
+    margin-bottom: 2rem;
+}
+
+.copyright{
+    width: 100%;
+    background-color: #ff9800;
+    color: white;
+    height: 2rem;
+    text-align: center;
+    padding-top: 0.5rem;
+}

@@ -1,0 +1,28 @@
+version: 0.2
+
+phases:
+  install:
+    commands:
+     - curl -sL https://deb.nodesource.com/setup_10.x |  bash -
+     - apt install -y nodejs
+  pre_build:
+    commands:
+     - npm install
+  build:
+    commands:
+     - npm run cli
+reports:
+  jest_reports:
+    files:
+      - "junit.xml"
+    file-format: JunitXml
+    base-directory: 'test/results'
+artifacts:
+ files:
+      - "**/*"
+ base-directory: 'test/results'
+ secondary-artifacts:
+    artifact1:
+      files:
+         - "**/*"
+      base-directory: 'build'

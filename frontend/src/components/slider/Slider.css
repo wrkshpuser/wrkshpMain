@@ -1,0 +1,8 @@
+.slider{
+    padding: 10px;
+    flex-grow: 1
+}
+
+.react-swipeable-view-container > div{
+    overflow: hidden !important;
+}

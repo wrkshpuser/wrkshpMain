@@ -1,0 +1,469 @@
+{
+	"AWSTemplateFormatVersion": "2010-09-09",
+	"Description": "AWS CloudFormation Template for creating workshop foundation resources",
+	"Parameters": {
+		"LatestAmiId": {
+			"Type": "AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>",
+			"Default": "/aws/service/ami-amazon-linux-latest/amzn2-ami-hvm-x86_64-gp2"
+		}
+	},
+	"Resources": {
+		"wrkshpVPC": {
+			"Type": "AWS::EC2::VPC",
+			"Properties": {
+				"CidrBlock": "172.30.0.0/16"
+			}
+		},
+		"wrkshpPublicSubnet": {
+			"Type": "AWS::EC2::Subnet",
+			"Properties": {
+				"VpcId": {
+					"Ref": "wrkshpVPC"
+				},
+				"AvailabilityZone" : {
+				  "Fn::Select" : [ 
+					"0", 
+					{ 
+					  "Fn::GetAZs" : "" 
+					} 
+				  ]
+				},
+				"CidrBlock": "172.30.1.0/24",
+				"MapPublicIpOnLaunch": true
+			}
+		},
+		"wrkshpPrivateSubnet": {
+			"Type": "AWS::EC2::Subnet",
+			"Properties": {
+				"VpcId": {
+					"Ref": "wrkshpVPC"
+				},
+				"AvailabilityZone" : {
+				  "Fn::Select" : [ 
+					"1", 
+					{ 
+					  "Fn::GetAZs" : "" 
+					} 
+				  ]
+				},
+				"CidrBlock": "172.30.3.0/24",
+				"MapPublicIpOnLaunch": false
+			}
+		},
+		"InternetGateway": {
+			"Type": "AWS::EC2::InternetGateway",
+			"Properties": {
+				"Tags": [{
+						"Key": "Name",
+						"Value": {
+							"Fn::Join": [
+								"_",
+								[{
+									"Ref": "AWS::StackName"
+								}]
+							]
+						}
+					},
+					{
+						"Key": "Network",
+						"Value": "Public"
+					}
+				]
+			}
+		},
+		"GatewayToInternet": {
+			"Type": "AWS::EC2::VPCGatewayAttachment",
+			"Properties": {
+				"VpcId": {
+					"Ref": "wrkshpVPC"
+				},
+				"InternetGatewayId": {
+					"Ref": "InternetGateway"
+				}
+			}
+		},
+		"PublicRouteTable": {
+			"Type": "AWS::EC2::RouteTable",
+			"Properties": {
+				"VpcId": {
+					"Ref": "wrkshpVPC"
+				},
+				"Tags": [{
+					"Key": "Network",
+					"Value": "Public"
+				}]
+			}
+		},
+		"PublicRoute": {
+			"Type": "AWS::EC2::Route",
+			"DependsOn": "GatewayToInternet",
+			"Properties": {
+				"RouteTableId": {
+					"Ref": "PublicRouteTable"
+				},
+				"DestinationCidrBlock": "0.0.0.0/0",
+				"GatewayId": {
+					"Ref": "InternetGateway"
+				}
+			}
+		},
+		"wrkshpPublicSubnetRouteTableAssociation": {
+			"Type": "AWS::EC2::SubnetRouteTableAssociation",
+			"Properties": {
+				"SubnetId": {
+					"Ref": "wrkshpPublicSubnet"
+				},
+				"RouteTableId": {
+					"Ref": "PublicRouteTable"
+				}
+			}
+		},
+		"NatGateway": {
+			"Type": "AWS::EC2::NatGateway",
+			"DependsOn": "NatPublicIP",
+			"Properties": {
+				"AllocationId": {
+					"Fn::GetAtt": [
+						"NatPublicIP",
+						"AllocationId"
+					]
+				},
+				"SubnetId": {
+					"Ref": "wrkshpPublicSubnet"
+				}
+			}
+		},
+		"NatPublicIP": {
+			"Type": "AWS::EC2::EIP",
+			"DependsOn": "wrkshpVPC",
+			"Properties": {
+				"Domain": "vpc"
+			}
+		},
+		"PrivateRouteTable": {
+			"Type": "AWS::EC2::RouteTable",
+			"Properties": {
+				"VpcId": {
+					"Ref": "wrkshpVPC"
+				},
+				"Tags": [{
+					"Key": "Network",
+					"Value": "Private"
+				}]
+			}
+		},
+		"PrivateRoute": {
+			"Type": "AWS::EC2::Route",
+			"Properties": {
+				"RouteTableId": {
+					"Ref": "PrivateRouteTable"
+				},
+				"DestinationCidrBlock": "0.0.0.0/0",
+				"NatGatewayId": {
+					"Ref": "NatGateway"
+				}
+			}
+		},
+		"wrkshpPrivateSubnetRouteTableAssociation": {
+			"Type": "AWS::EC2::SubnetRouteTableAssociation",
+			"Properties": {
+				"SubnetId": {
+					"Ref": "wrkshpPrivateSubnet"
+				},
+				"RouteTableId": {
+					"Ref": "PrivateRouteTable"
+				}
+			}
+		},
+		"InstanceSecurityGroup": {
+			"Type": "AWS::EC2::SecurityGroup",
+			"Properties": {
+				"GroupName": "cfn-awswrkshp-aut-seg",
+				"GroupDescription": "Enable full access",
+				"SecurityGroupIngress": [
+					{
+						"IpProtocol": "tcp",
+						"FromPort": 8081,
+						"ToPort": 8081,
+						"CidrIp": "0.0.0.0/0"
+					},
+					{
+						"IpProtocol": "tcp",
+						"FromPort": 9000,
+						"ToPort": 9000,
+						"CidrIp": "0.0.0.0/0"
+					},
+					{
+						"IpProtocol": "tcp",
+						"FromPort": 3000,
+						"ToPort": 3000,
+						"CidrIp": "0.0.0.0/0"
+					}
+				],
+				"VpcId" : {"Ref": "wrkshpVPC"}
+			}
+		},
+		"RootRole": {
+			"Type": "AWS::IAM::Role",
+			"Properties": {
+				"AssumeRolePolicyDocument": {
+					"Version": "2012-10-17",
+					"Statement": [{
+						"Effect": "Allow",
+						"Principal": {
+							"Service": [
+								"ec2.amazonaws.com"
+							]
+						},
+						"Action": [
+							"sts:AssumeRole"
+						]
+					}]
+				},
+				"Path": "/",
+				"Policies": [{
+					"PolicyName": "root",
+					"PolicyDocument": {
+						"Version": "2012-10-17",
+						"Statement": [{
+							"Effect": "Allow",
+							"Action": "*",
+							"Resource": "*"
+						}]
+					}
+				}]
+			}
+		},
+		"FrontendInstance": {
+			"Type": "AWS::EC2::Instance",
+			"Properties": {
+						"UserData": {
+							"Fn::Base64": {
+								"Fn::Join": [
+									"",
+									[
+										"#!/bin/bash","\n",
+										"yum update","\n",
+										"curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.34.0/install.sh | bash","\n",
+										". ~/.nvm/nvm.sh","\n",
+										"nvm install node","\n",
+										"node -e console.log('Running Node.js ' + process.version)","\n",
+										"yum install git","\n"
+									]
+								]
+							}
+						},	
+				"AvailabilityZone" : {
+					  "Fn::Select" : [ 
+						"0", 
+						{ 
+						  "Fn::GetAZs" : "" 
+						} 
+					  ]
+					},
+				"ImageId": {"Ref": "LatestAmiId"},
+				"InstanceType": "t2.micro",
+				"NetworkInterfaces": [{
+					"AssociatePublicIpAddress": "true",
+					"GroupSet": [{"Ref":"InstanceSecurityGroup"}],
+					"DeviceIndex": "0",
+					"SubnetId": {
+						"Ref": "wrkshpPublicSubnet"
+					}
+				}],
+				"Monitoring": "True",
+				"Tags": [{
+					"Key": "Name",
+					"Value": "cfn-Please Dont Stop - awsworkshp-frontend"
+				}, {
+					"Key": "criticality",
+					"Value": "critical"
+				}]
+			}
+		},
+		"FrontendIPAddress": {
+			"Type": "AWS::EC2::EIP"
+		},
+		"FrontendIPAssoc": {
+			"Type": "AWS::EC2::EIPAssociation",
+			"Properties": {
+				"InstanceId": {
+					"Ref": "FrontendInstance"
+				},
+				"EIP": {
+					"Ref": "FrontendIPAddress"
+				}
+			}
+		},
+		"BackendInstance": {
+			"Type": "AWS::EC2::Instance",
+			"Properties": {
+				"UserData": {
+							"Fn::Base64": {
+								"Fn::Join": [
+									"",
+									[
+										"#!/bin/bash","\n",
+										"yum update -y","\n",
+										"yum install git","\n",
+										"yum install java-1.8.0-openjdk-devel","\n",
+										"amazon-linux-extras install docker","\n",										
+										"service docker start","\n",
+										"usermod -a -G docker ec2-user","\n",
+										"docker run -d -p 9000:9000 sonarqube","\n",
+										"docker run -d -e 'ACCEPT_EULA=Y' -e 'SA_PASSWORD=Ctsshop@db' -p 1433:1433 --name sql1 -d mcr.microsoft.com/mssql/server:2019-CU5-ubuntu-18.04","\n"										
+									]
+								]
+							}
+						},	
+				"AvailabilityZone" : {
+					  "Fn::Select" : [ 
+						"0", 
+						{ 
+						  "Fn::GetAZs" : "" 
+						} 
+					  ]
+					},
+				"ImageId": {"Ref": "LatestAmiId"},
+				"InstanceType": "t2.xlarge",
+				"NetworkInterfaces": [{
+					"AssociatePublicIpAddress": "true",
+					"DeviceIndex": "0",
+					"GroupSet": [{"Ref":"InstanceSecurityGroup"}],
+					"SubnetId": {
+						"Ref": "wrkshpPublicSubnet"
+					}
+				}],
+				"Monitoring": "True",
+				"Tags": [{
+					"Key": "Name",
+					"Value": "cfn-Please Dont Stop - awsworkshp-backend"
+				}, {
+					"Key": "criticality",
+					"Value": "critical"
+				}]
+			}
+		},
+		"wrkshpStorage": {
+			"Type": "AWS::S3::Bucket",
+			"Properties": {
+				"BucketName": "cfn-devops-workshop-west-2",
+				"PublicAccessBlockConfiguration": {
+					"BlockPublicPolicy": "True"
+				}
+			}
+		},
+		"wrkshpbackendRepo":{
+		  "Type":"AWS::CodeCommit::Repository",
+		  "Properties":{
+			"RepositoryName": "awswrkshp-aut-backend",
+			"RepositoryDescription":"CodeCommit Repository awswrkshp-aut-backend"
+		  }
+		},
+		"wrkshpfrontendRepo":{
+		  "Type":"AWS::CodeCommit::Repository",
+		  "Properties":{
+			"RepositoryName": "awswrkshp-aut-frontend",
+			"RepositoryDescription":"CodeCommit Repository awswrkshp-aut-frontend"
+		  }
+		},
+		"wrkshpfunctionalAssuranceRepo":{
+		  "Type":"AWS::CodeCommit::Repository",
+		  "Properties":{
+			"RepositoryName": "awswrkshp-functional-assurance",
+			"RepositoryDescription":"CodeCommit Repository awswrkshp-functional-assurance"
+		  }
+		},
+		"wrkshpAccessibilityTestsRepo":{
+		  "Type":"AWS::CodeCommit::Repository",
+		  "Properties":{
+			"RepositoryName": "awswrkshp-tests-accessibility",
+			"RepositoryDescription":"CodeCommit Repository awswrkshp-tests-accessibility"
+		  }
+		},
+		"wrkshpPerformanceTestsRepo":{
+		  "Type":"AWS::CodeCommit::Repository",
+		  "Properties":{
+			"RepositoryName": "awswrkshp-tests-performance",
+			"RepositoryDescription":"CodeCommit Repository awswrkshp-tests-performance"
+		  }
+		},
+		"wrkshpSecurityTestsRepo":{
+		  "Type":"AWS::CodeCommit::Repository",
+		  "Properties":{
+			"RepositoryName": "awswrkshp-tests-security",
+			"RepositoryDescription":"CodeCommit Repository awswrkshp-tests-security"
+		  }
+		},
+		"wrkshpSecrets": {
+			"Type": "AWS::SecretsManager::Secret",
+			"Properties": {
+			  "Name": "wrkshpSecrets",
+			  "SecretString": {"Fn::Join": ["", [ "{\"frontendIP\"",":","\"",{"Ref": "FrontendIPAddress"},
+			  "\",\"backendIP\"",":","\"",{"Fn::GetAtt": ["BackendInstance", "PrivateIp"] },
+			  "\",\"bucketname\"",":","\"",{ "Ref" : "wrkshpStorage"},"\"}"] ]}
+			}
+	  }	
+	},
+	"Outputs": {
+	    "wrkshpVPC" : {		
+			"Value": { "Ref": "wrkshpVPC"},
+			"Export" : { "Name" : "wrkshpVPC"}
+		},
+	    "wrkshpPublicSubnet" : {		
+			"Value": { "Ref": "wrkshpPublicSubnet"},
+			"Export" : { "Name" : "wrkshpPublicSubnet"}
+		},
+	    "wrkshpPrivateSubnet" : {		
+			"Value": { "Ref": "wrkshpPrivateSubnet"},
+			"Export" : { "Name" : "wrkshpPrivateSubnet"}
+		},
+	    "wrkshpbackendRepo" : {		
+			"Value": {"Fn::GetAtt": ["wrkshpbackendRepo", "CloneUrlHttp"] },
+			"Export" : { "Name" : "wrkshpbackendRepo"}
+		},		
+	    "wrkshpfrontendRepo" : {		
+			"Value": {"Fn::GetAtt": ["wrkshpfrontendRepo", "CloneUrlHttp"] },
+			"Export" : { "Name" : "wrkshpfrontendRepo"}
+		},		
+	    "wrkshpfunctionalAssuranceRepo" : {		
+			"Value": {"Fn::GetAtt": ["wrkshpfunctionalAssuranceRepo", "CloneUrlHttp"] },
+			"Export" : { "Name" : "wrkshpfunctionalAssuranceRepo"}
+		},		
+	    "wrkshpAccessibilityTestsRepo" : {		
+			"Value": {"Fn::GetAtt": ["wrkshpAccessibilityTestsRepo", "CloneUrlHttp"] },
+			"Export" : { "Name" : "wrkshpAccessibilityTestsRepo"}
+		},		
+	    "wrkshpPerformanceTestsRepo" : {		
+			"Value": {"Fn::GetAtt": ["wrkshpPerformanceTestsRepo", "CloneUrlHttp"] },
+			"Export" : { "Name" : "wrkshpPerformanceTestsRepo"}
+		},		
+	    "wrkshpSecurityTestsRepo" : {		
+			"Value": {"Fn::GetAtt": ["wrkshpSecurityTestsRepo", "CloneUrlHttp"] },
+			"Export" : { "Name" : "wrkshpSecurityTestsRepo"}
+		},		
+		"frontendIP": {
+			"Value": {
+				"Ref": "FrontendIPAddress"
+			}
+		},
+		"backendPublicIP": {
+			"Value": {
+				"Fn::GetAtt": ["BackendInstance", "PublicIp"]
+			}
+		},
+		"backendPrivateIP": {
+			"Value": {
+				"Fn::GetAtt": ["BackendInstance", "PrivateIp"]
+			}
+		},		
+		"bucketname": {
+			"Value": {"Ref" : "wrkshpStorage"},
+			"Export" : { "Name" : "bucketname"}
+		},
+		"securitygroup": {
+			"Value": {"Ref" : "InstanceSecurityGroup"},
+			"Export" : { "Name" : "securitygroup"}
+		}
+	}
+}

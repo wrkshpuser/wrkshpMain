@@ -1,0 +1,6 @@
+[
+    {
+        "name": "awswrkshpFrontEnd",
+        "imageUri": "280367259647.dkr.ecr.ap-southeast-1.amazonaws.com/awswrkshp-aut-frontend:latest"
+    }
+]

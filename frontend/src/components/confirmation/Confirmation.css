@@ -1,0 +1,11 @@
+.stepper{
+    text-align: left;
+    width: 50%;
+}
+
+.tickicon{
+    padding: 10px;
+    border: 3px solid;
+    border-radius: 50px;
+    margin-bottom: 20px;
+}

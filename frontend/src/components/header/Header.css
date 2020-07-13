@@ -1,0 +1,17 @@
+.logo {
+    width: 60px;
+    margin-top: 10px;
+}
+  
+.title {
+    margin-top: 5px !important;
+    flex-grow: 1;
+    color: red !important;
+    font-weight: 500 !important;
+}
+
+.badge{
+    top:5px;
+    right:5px;
+    color: aliceblue
+}

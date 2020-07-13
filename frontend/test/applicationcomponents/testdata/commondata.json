@@ -1,0 +1,36 @@
+{
+    "countries":[{
+        "Country":"US",
+        "Locale":"en_US",
+        "faker_Locale":"en_US",
+        "shippingAddress":{
+            "address1":"2458 Ericka Green",
+            "address2":"Bernhard Trace",
+            "town_city":"West Guy",
+            "state_province":"Illinois",
+            "postcode":"42280-6112",
+            "phonenumber":"087-655-7826",
+            "shippingAddressAsBillingAddress":{
+                "availability":true,
+                "defaultSelected":true
+            }
+        }
+    },
+    {
+        "Country":"CA",
+        "Locale":"en_CA",
+        "faker_Locale":"fr_CA",
+        "shippingAddress":{
+            "address1":"2159 Luettgen Greens",
+            "address2":"Hintz Underpass",
+            "town_city":"Ottawa",
+            "state_province":"Ontario",
+            "postcode":"K1A 0B1",
+            "phonenumber":"904 452-2293",
+            "shippingAddressAsBillingAddress":{
+                "availability":true,
+                "defaultSelected":true
+            }
+        }
+    }]
+} 

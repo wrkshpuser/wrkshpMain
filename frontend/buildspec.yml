@@ -1,0 +1,48 @@
+version: 0.2
+
+env:
+    secrets-manager:
+        backendIP: wrkshpSecrets:backendIP
+        beURL: wrkshpSecretsPrebuildQA:LoadBalancer
+        
+phases:
+  pre_build:
+    commands:
+      - echo Logging in to Amazon ECR...
+      - aws --version
+      - $(aws ecr get-login --region $AWS_DEFAULT_REGION --no-include-email)
+      - REPOSITORY_URI=280367259647.dkr.ecr.ap-southeast-1.amazonaws.com/awswrkshp-aut-frontend
+      - COMMIT_HASH=$(echo $CODEBUILD_RESOLVED_SOURCE_VERSION | cut -c 1-7)
+      - IMAGE_TAG=build-$(echo $CODEBUILD_BUILD_ID | awk -F":" '{print $2}')
+  build:
+    commands:
+      - echo Build started on `date`
+      - echo Installing the App...
+      - npm install
+      - echo Executing the test...
+      - npm run cli
+      - echo Building the Docker image if All Test Passed...
+      - docker build ./ -t $REPOSITORY_URI:latest -t $REPOSITORY_URI:latest -t $REPOSITORY_URI:1.0
+      - docker tag $REPOSITORY_URI:latest $REPOSITORY_URI:$IMAGE_TAG
+  post_build:
+    commands:
+      - echo Build completed on `date`
+      - echo Pushing the Docker images...
+      - docker push $REPOSITORY_URI:latest
+      - docker push $REPOSITORY_URI:$IMAGE_TAG
+      - echo Writing image definitions file...
+      - printf '[{"name":"awswrkshpFrontEnd","imageUri":"%s"}]' $REPOSITORY_URI:latest > imagedefinitions.json
+reports:
+  UnitTestResults:
+    files:
+      - "**/*"
+    base-directory: "test/results"
+artifacts:
+  files:
+    - imagedefinitions.json
+  name: image-definitions
+  secondary-artifacts:
+    artifact1:
+      base-directory: "test/results"
+      files:
+        - "**/*"

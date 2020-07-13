@@ -1,0 +1,41 @@
+.productlistthumb {
+    display: flex;
+    padding: 10px;
+}
+.listimg{
+    width: 200px;
+    height: 240px;
+    min-width: 200px;
+    min-height: 240px;
+}
+.productlistdetails{
+    display: flex;
+    flex-direction: column;
+}
+.productlisttitle{
+    flex: 1 0 auto;
+}
+.listprice {
+    margin: 5px 0px !important;
+    color: #2e86de !important;
+    font-weight: 100 !important;
+}
+.reviews{
+    color: gray;
+    margin-bottom: 15px !important;
+}
+.delivery{
+    font-size: 15px !important;
+    color: gray;
+}
+
+@media only screen and (min-device-width : 320px) and (max-device-width : 480px){
+    .productlistthumb {
+        display: block;
+        padding: 10px;
+    }
+
+    .listimg{
+        margin: 0 auto;
+    }
+}

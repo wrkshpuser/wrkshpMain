@@ -1,0 +1,23 @@
+{
+    "executionRunTimeDetails": [
+        {
+            "ReportPath": "./Results/RUN_25_11_2019_0_15_8",
+            "StartTimeOfExecution": "Yes"
+        }
+    ],
+    "testcases":[
+        {
+            "testID":"",
+            "passedSteps":1,
+            "failedSteps":1,
+            "failedReasons":[
+                {
+                    "reason":""
+                },
+                {
+                    "reason":""
+                }
+            ]
+        }
+    ]
+}
