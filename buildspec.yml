@@ -1,0 +1,24 @@
+version: 0.2
+
+env:
+  git-credential-helper: yes
+
+phases:
+  build:
+    commands:
+     - git config --global user.email "workshopuser@cognizant.com"
+     - git config --global user.name "workshopuser"
+     - git clone https://git-codecommit.us-east-2.amazonaws.com/v1/repos/awswrkshp-aut-frontend
+     - cd awswrkshp-aut-frontend
+     - cp -R ../frontend/* .
+     - git add *
+     - git commit -m "init commit"
+     - git push
+     - cd ..
+     - git clone https://git-codecommit.us-east-2.amazonaws.com/v1/repos/awswrkshp-aut-backend
+     - cd awswrkshp-aut-backend
+     - cp -R ../backend/* .
+     - git add *
+     - git commit -m "init commit"
+     - git push
+     - cd ..
